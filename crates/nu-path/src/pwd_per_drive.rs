@@ -231,7 +231,7 @@ static DRIVE_PWD_MAP: OnceLock<Mutex<DriveToPwdMap>> = OnceLock::new();
 fn get_shared_drive_pwd_map() -> &'static Mutex<DriveToPwdMap> {
     DRIVE_PWD_MAP.get_or_init(|| {
         let shared_map = Mutex::new(DriveToPwdMap::new());
-        // Clear these env_vars as CMD
+        // Clear these env_vars as CMD do
         for drive_letter in 'A'..='Z' {
             std::env::remove_var(format!("={}:", drive_letter));
         }
