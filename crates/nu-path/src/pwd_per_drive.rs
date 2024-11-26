@@ -105,7 +105,7 @@ fn need_expand(path: &Path) -> bool {
     false
 }
 
-struct DriveToPwdMap {
+pub struct DriveToPwdMap {
     map: [Option<String>; 26], // Fixed-size array for A-Z
 }
 
@@ -125,7 +125,7 @@ impl DriveToPwdMap {
     }
 
     pub fn env_var_for_drive(drive_letter: char) -> String {
-        let driver_letter = drive_letter.to_ascii_uppercase();
+        let drive_letter = drive_letter.to_ascii_uppercase();
         format!("={}:", drive_letter)
     }
 

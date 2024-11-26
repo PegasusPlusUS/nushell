@@ -52,6 +52,8 @@ pub struct Stack {
     /// Locally updated config. Use [`.get_config()`](Self::get_config) to access correctly.
     pub config: Option<Arc<Config>>,
     pub(crate) out_dest: StackOutDest,
+    #[cfg(windows)]
+    pub pwd_per_drive: nu_path::DriveToPwdMap,
 }
 
 impl Default for Stack {
