@@ -298,7 +298,7 @@ pub fn eval_arguments_from_call(
         match arg {
             // Expand globs passed to run-external
             Value::Glob { val, no_expand, .. } if !no_expand => args.extend(
-                expand_glob(&val, cwd.as_std_path(), span, engine_state.signals())?
+                expand_glob(&val, cwd.as_std_path(), span, engine_state.signals(), stack)?
                     .into_iter()
                     .map(|s| s.into_spanned(span)),
             ),
@@ -332,6 +332,7 @@ fn expand_glob(
     cwd: &Path,
     span: Span,
     signals: &Signals,
+    stack: &mut Stack,
 ) -> Result<Vec<OsString>, ShellError> {
     const GLOB_CHARS: &[char] = &['*', '?', '['];
 
@@ -345,7 +346,7 @@ fn expand_glob(
     // We must use `nu_engine::glob_from` here, in order to ensure we get paths from the correct
     // dir
     let glob = NuGlob::Expand(arg.to_owned()).into_spanned(span);
-    if let Ok((prefix, matches)) = nu_engine::glob_from(&glob, cwd, span, None) {
+    if let Ok((prefix, matches)) = nu_engine::glob_from(stack, &glob, cwd, span, None) {
         let mut result: Vec<OsString> = vec![];
 
         for m in matches {
@@ -659,31 +660,32 @@ mod test {
             play.with_files(&[Stub::EmptyFile("a.txt"), Stub::EmptyFile("b.txt")]);
 
             let cwd = dirs.test().as_std_path();
+            let mut stack = Stack::new();
 
-            let actual = expand_glob("*.txt", cwd, Span::unknown(), &Signals::empty()).unwrap();
+            let actual = expand_glob("*.txt", cwd, Span::unknown(), &Signals::empty(), &mut stack).unwrap();
             let expected = &["a.txt", "b.txt"];
             assert_eq!(actual, expected);
 
-            let actual = expand_glob("./*.txt", cwd, Span::unknown(), &Signals::empty()).unwrap();
+            let actual = expand_glob("./*.txt", cwd, Span::unknown(), &Signals::empty(), &mut stack).unwrap();
             assert_eq!(actual, expected);
 
-            let actual = expand_glob("'*.txt'", cwd, Span::unknown(), &Signals::empty()).unwrap();
+            let actual = expand_glob("'*.txt'", cwd, Span::unknown(), &Signals::empty(), &mut stack).unwrap();
             let expected = &["'*.txt'"];
             assert_eq!(actual, expected);
 
-            let actual = expand_glob(".", cwd, Span::unknown(), &Signals::empty()).unwrap();
+            let actual = expand_glob(".", cwd, Span::unknown(), &Signals::empty(), &mut stack).unwrap();
             let expected = &["."];
             assert_eq!(actual, expected);
 
-            let actual = expand_glob("./a.txt", cwd, Span::unknown(), &Signals::empty()).unwrap();
+            let actual = expand_glob("./a.txt", cwd, Span::unknown(), &Signals::empty(), &mut stack).unwrap();
             let expected = &["./a.txt"];
             assert_eq!(actual, expected);
 
-            let actual = expand_glob("[*.txt", cwd, Span::unknown(), &Signals::empty()).unwrap();
+            let actual = expand_glob("[*.txt", cwd, Span::unknown(), &Signals::empty(), &mut stack).unwrap();
             let expected = &["[*.txt"];
             assert_eq!(actual, expected);
 
-            let actual = expand_glob("~/foo.txt", cwd, Span::unknown(), &Signals::empty()).unwrap();
+            let actual = expand_glob("~/foo.txt", cwd, Span::unknown(), &Signals::empty(), &mut stack).unwrap();
             let home = dirs::home_dir().expect("failed to get home dir");
             let expected: Vec<OsString> = vec![home.join("foo.txt").into()];
             assert_eq!(actual, expected);

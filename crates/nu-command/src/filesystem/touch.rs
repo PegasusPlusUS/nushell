@@ -1,6 +1,6 @@
 use filetime::FileTime;
 use nu_engine::command_prelude::*;
-use nu_path::expand_path_with;
+//use nu_path::expand_path_with;
 use nu_protocol::NuGlob;
 
 use std::{fs::OpenOptions, time::SystemTime};
@@ -93,7 +93,7 @@ impl Command for Touch {
         }
 
         if let Some(reference) = reference {
-            let reference_path = nu_path::expand_path_with(reference.item, &cwd, true);
+            let reference_path = stack.expand_path_with(reference.item, &cwd, true);
             let exists = if no_follow_symlinks {
                 // There's no symlink_exists function, so we settle for
                 // getting direct metadata and if it's OK, it exists
@@ -132,7 +132,7 @@ impl Command for Touch {
         }
 
         for glob in files {
-            let path = expand_path_with(glob.item.as_ref(), &cwd, glob.item.is_expand());
+            let path = stack.expand_path_with(glob.item.as_ref(), &cwd, glob.item.is_expand());
             let exists = if no_follow_symlinks {
                 path.symlink_metadata().is_ok()
             } else {

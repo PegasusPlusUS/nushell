@@ -119,7 +119,7 @@ impl Command for Du {
                     min_size,
                 };
                 Ok(
-                    du_for_one_pattern(args, &current_dir, tag, engine_state.signals())?
+                    du_for_one_pattern(args, &current_dir, tag, engine_state.signals(), stack)?
                         .into_pipeline_data(tag, engine_state.signals().clone()),
                 )
             }
@@ -139,6 +139,7 @@ impl Command for Du {
                         &current_dir,
                         tag,
                         engine_state.signals(),
+                        stack,
                     )?)
                 }
 
@@ -165,6 +166,7 @@ fn du_for_one_pattern(
     current_dir: &Path,
     span: Span,
     signals: &Signals,
+    stack: &mut Stack,
 ) -> Result<impl Iterator<Item = Value> + Send, ShellError> {
     let exclude = args.exclude.map_or(Ok(None), move |x| {
         Pattern::new(x.item.as_ref())
@@ -177,9 +179,10 @@ fn du_for_one_pattern(
 
     let include_files = args.all;
     let mut paths = match args.path {
-        Some(p) => nu_engine::glob_from(&p, current_dir, span, None),
+        Some(p) => nu_engine::glob_from(stack, &p, current_dir, span, None),
         // The * pattern should never fail.
         None => nu_engine::glob_from(
+            stack,
             &Spanned {
                 item: NuGlob::Expand("*".into()),
                 span: Span::unknown(),

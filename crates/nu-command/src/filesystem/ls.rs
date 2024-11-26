@@ -122,7 +122,7 @@ impl Command for Ls {
         };
         match input_pattern_arg {
             None => Ok(
-                ls_for_one_pattern(None, args, engine_state.signals().clone(), cwd)?
+                ls_for_one_pattern(None, args, engine_state.signals().clone(), stack, cwd)?
                     .into_pipeline_data_with_metadata(
                         call_span,
                         engine_state.signals().clone(),
@@ -139,6 +139,7 @@ impl Command for Ls {
                         Some(pat),
                         args,
                         engine_state.signals().clone(),
+                        stack,
                         cwd.clone(),
                     )?)
                 }
@@ -223,6 +224,7 @@ fn ls_for_one_pattern(
     pattern_arg: Option<Spanned<NuGlob>>,
     args: Args,
     signals: Signals,
+    stack: &mut Stack,
     cwd: PathBuf,
 ) -> Result<PipelineData, ShellError> {
     fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, ShellError> {
@@ -334,7 +336,7 @@ fn ls_for_one_pattern(
             };
             Some(glob_options)
         };
-        glob_from(&path, &cwd, call_span, glob_options)?
+        glob_from(stack, &path, &cwd, call_span, glob_options)?
     };
 
     let mut paths_peek = paths.peekable();

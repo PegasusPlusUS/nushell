@@ -5,7 +5,7 @@ use chrono::{DateTime, FixedOffset};
 use filetime::FileTime;
 
 use nu_engine::CallExt;
-use nu_path::expand_path_with;
+//use nu_path::expand_path_with;
 use nu_protocol::engine::{Call, Command, EngineState, Stack};
 use nu_protocol::{
     Category, Example, NuGlob, PipelineData, ShellError, Signature, Spanned, SyntaxShape, Type,
@@ -140,7 +140,7 @@ impl Command for UTouch {
                 timestamp.item.timestamp_subsec_nanos(),
             ))
         } else if let Some(reference_file) = reference_file {
-            let reference_file = expand_path_with(reference_file, &cwd, true);
+            let reference_file = stack.expand_path_with(reference_file, &cwd, true);
             Source::Reference(reference_file)
         } else {
             Source::Now
@@ -160,7 +160,7 @@ impl Command for UTouch {
                 input_files.push(InputFile::Stdout);
             } else {
                 let path =
-                    expand_path_with(file_glob.item.as_ref(), &cwd, file_glob.item.is_expand());
+                    stack.expand_path_with(file_glob.item.as_ref(), &cwd, file_glob.item.is_expand());
                 input_files.push(InputFile::Path(path));
             }
         }

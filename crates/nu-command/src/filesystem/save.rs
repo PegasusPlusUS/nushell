@@ -2,7 +2,7 @@ use crate::progress_bar;
 use nu_engine::get_eval_block;
 #[allow(deprecated)]
 use nu_engine::{command_prelude::*, current_dir};
-use nu_path::expand_path_with;
+//use nu_path::expand_path_with;
 use nu_protocol::{
     ast, byte_stream::copy_with_signals, process::ChildPipe, ByteStreamSource, DataSource, OutDest,
     PipelineMetadata, Signals,
@@ -75,14 +75,14 @@ impl Command for Save {
 
         let path_arg = call.req::<Spanned<PathBuf>>(engine_state, stack, 0)?;
         let path = Spanned {
-            item: expand_path_with(path_arg.item, &cwd, true),
+            item: stack.expand_path_with(path_arg.item, &cwd, true),
             span: path_arg.span,
         };
 
         let stderr_path = call
             .get_flag::<Spanned<PathBuf>>(engine_state, stack, "stderr")?
             .map(|arg| Spanned {
-                item: expand_path_with(arg.item, cwd, true),
+                item: stack.expand_path_with(arg.item, cwd, true),
                 span: arg.span,
             });
 

@@ -2,7 +2,7 @@ use super::util::{get_rest_for_glob_pattern, try_interaction};
 #[allow(deprecated)]
 use nu_engine::{command_prelude::*, env::current_dir};
 use nu_glob::MatchOptions;
-use nu_path::expand_path_with;
+//use nu_path::expand_path_with;
 use nu_protocol::{report_shell_error, NuGlob};
 #[cfg(unix)]
 use std::os::unix::prelude::FileTypeExt;
@@ -146,7 +146,7 @@ fn rm(
 
     for (idx, path) in paths.clone().into_iter().enumerate() {
         if let Some(ref home) = home {
-            if expand_path_with(path.item.as_ref(), &currentdir_path, path.item.is_expand())
+            if stack.expand_path_with(path.item.as_ref(), &currentdir_path, path.item.is_expand())
                 .to_string_lossy()
                 .as_ref()
                 == home.as_str()
@@ -231,7 +231,7 @@ fn rm(
     let mut all_targets: HashMap<PathBuf, Span> = HashMap::new();
 
     for target in paths {
-        let path = expand_path_with(
+        let path = stack.expand_path_with(
             target.item.as_ref(),
             &currentdir_path,
             target.item.is_expand(),
@@ -249,6 +249,7 @@ fn rm(
         }
 
         match nu_engine::glob_from(
+            stack,
             &target,
             &currentdir_path,
             call.head,
@@ -274,7 +275,7 @@ fn rm(
                             }
 
                             all_targets
-                                .entry(nu_path::expand_path_with(
+                                .entry(stack.expand_path_with(
                                     f,
                                     &currentdir_path,
                                     target.item.is_expand(),

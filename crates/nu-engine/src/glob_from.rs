@@ -1,6 +1,6 @@
 use nu_glob::MatchOptions;
 use nu_path::{canonicalize_with, expand_path_with};
-use nu_protocol::{NuGlob, ShellError, Span, Spanned};
+use nu_protocol::{engine::Stack, NuGlob, ShellError, Span, Spanned};
 use std::{
     fs,
     path::{Component, Path, PathBuf},
@@ -17,6 +17,7 @@ const GLOB_CHARS: &[char] = &['*', '?', '['];
 /// The second of the two values is an iterator over the matching filepaths.
 #[allow(clippy::type_complexity)]
 pub fn glob_from(
+    stack: &mut Stack,
     pattern: &Spanned<NuGlob>,
     cwd: &Path,
     span: Span,
@@ -57,7 +58,7 @@ pub fn glob_from(
         }
 
         // Now expand `p` to get full prefix
-        let path = expand_path_with(p, cwd, pattern.item.is_expand());
+        let path = stack.expand_path_with(p, cwd, pattern.item.is_expand());
         let escaped_prefix = PathBuf::from(nu_glob::Pattern::escape(&path.to_string_lossy()));
 
         (Some(path), escaped_prefix.join(just_pattern))

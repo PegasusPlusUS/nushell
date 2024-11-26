@@ -135,7 +135,7 @@ impl Command for UMv {
         for mut p in paths {
             p.item = p.item.strip_ansi_string_unlikely();
             let exp_files: Vec<Result<PathBuf, ShellError>> =
-                nu_engine::glob_from(&p, &cwd, call.head, None)
+                nu_engine::glob_from(stack, &p, &cwd, call.head, None)
                     .map(|f| f.1)?
                     .collect();
             if exp_files.is_empty() {
