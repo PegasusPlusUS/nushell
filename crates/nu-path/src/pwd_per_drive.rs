@@ -322,8 +322,14 @@ mod tests {
 
         let mut env = HashMap::<String, String>::new();
         map.get_env_vars(&mut env);
-        assert_eq!(env.get(&DriveToPwdMap::env_var_for_drive('I')).unwrap(), r"I:\Home");
-        assert_eq!(env.get(&DriveToPwdMap::env_var_for_drive('J')).unwrap(), r"J:\User");
+        assert_eq!(
+            env.get(&DriveToPwdMap::env_var_for_drive('I')).unwrap(),
+            r"I:\Home"
+        );
+        assert_eq!(
+            env.get(&DriveToPwdMap::env_var_for_drive('J')).unwrap(),
+            r"J:\User"
+        );
     }
 
     #[test]
