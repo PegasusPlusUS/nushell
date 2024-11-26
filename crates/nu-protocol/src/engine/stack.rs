@@ -760,7 +760,7 @@ impl Stack {
             Ok(())
         }
     }
-    pub fn expand_path_with<P, Q>(&mut self, path: P, relative_to: Q, expand_tilde: bool) -> PathBuf
+    pub fn expand_path_with<P, Q>(&self, path: P, relative_to: Q, expand_tilde: bool) -> PathBuf
     where
         P: AsRef<Path>,
         Q: AsRef<Path>,

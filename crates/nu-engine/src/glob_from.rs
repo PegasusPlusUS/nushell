@@ -1,5 +1,5 @@
 use nu_glob::MatchOptions;
-use nu_path::{canonicalize_with, expand_path_with};
+use nu_path::canonicalize_with;
 use nu_protocol::{engine::Stack, NuGlob, ShellError, Span, Spanned};
 use std::{
     fs,
@@ -17,7 +17,7 @@ const GLOB_CHARS: &[char] = &['*', '?', '['];
 /// The second of the two values is an iterator over the matching filepaths.
 #[allow(clippy::type_complexity)]
 pub fn glob_from(
-    stack: &mut Stack,
+    stack: &Stack,
     pattern: &Spanned<NuGlob>,
     cwd: &Path,
     span: Span,
@@ -64,7 +64,7 @@ pub fn glob_from(
         (Some(path), escaped_prefix.join(just_pattern))
     } else {
         let path = PathBuf::from(&pattern.item.as_ref());
-        let path = expand_path_with(path, cwd, pattern.item.is_expand());
+        let path = stack.expand_path_with(path, cwd, pattern.item.is_expand());
         let is_symlink = match fs::symlink_metadata(&path) {
             Ok(attr) => attr.file_type().is_symlink(),
             Err(_) => false,

@@ -58,41 +58,6 @@ use std::path::{Path, PathBuf};
 pub enum PathError {
     InvalidDriveLetter,
     InvalidPath,
-    CantLockSharedMap,
-}
-pub mod shared_map {
-    use super::*;
-    use crate::pwd_per_drive::PathError::CantLockSharedMap;
-
-    /// set_pwd_per_drive
-    /// Record PWD for drive, path must be absolute path
-    /// return Ok(()) if succeeded, otherwise error message
-    pub fn set_pwd(path: &Path) -> Result<(), PathError> {
-        if let Ok(mut pwd_per_drive) = get_shared_drive_pwd_map().lock() {
-            pwd_per_drive.set_pwd(path)
-        } else {
-            Err(CantLockSharedMap)
-        }
-    }
-
-    /// expand_pwe_per_drive
-    /// Input relative path, expand PWD-per-drive to construct absolute path
-    /// return PathBuf for absolute path, None if input path is invalid.
-    pub fn expand_pwd(path: &Path) -> Option<PathBuf> {
-        if need_expand(path) {
-            if let Ok(pwd_per_drive) = get_shared_drive_pwd_map().lock() {
-                return pwd_per_drive.expand_pwd(path);
-            }
-        }
-        None
-    }
-
-    /// Collect PWD-per-drive as env vars (for child process)
-    pub fn get_env_vars(env: &mut HashMap<String, String>) {
-        if let Ok(pwd_per_drive) = get_shared_drive_pwd_map().lock() {
-            pwd_per_drive.get_env_vars(env);
-        }
-    }
 }
 
 /// Helper to check if input path is relative path
@@ -120,6 +85,8 @@ impl DriveToPwdMap {
             let env_var = Self::env_var_for_drive(drive_letter);
             if let Ok(env_pwd) = std::env::var(&env_var) {
                 if env_pwd.len() > 3 {
+                    #[cfg(not(test))]
+                    std::env::remove_var(env_var);
                     map[drive_index] = Some(env_pwd);
                 }
             }
@@ -145,7 +112,7 @@ impl DriveToPwdMap {
     }
 
     /// Set the PWD for the drive letter in the absolute path.
-    /// Return String for error description.
+    /// Return PathError for error.
     pub fn set_pwd(&mut self, path: &Path) -> Result<(), PathError> {
         if let (Some(drive_letter), Some(path_str)) =
             (Self::extract_drive_letter(path), path.to_str())
@@ -171,7 +138,7 @@ impl DriveToPwdMap {
         }
     }
 
-    /// Get the PWD for drive, if not yet, ask GetFullPathNameW(),
+    /// Get the PWD for drive, if not yet, ask GetFullPathNameW() or omnipath,
     /// or else return default r"X:\".
     fn get_pwd(&self, drive_letter: char) -> Result<String, PathError> {
         if drive_letter.is_ascii_alphabetic() {
@@ -208,14 +175,15 @@ impl DriveToPwdMap {
         None // Invalid path or has no drive letter
     }
 
-    /// Extract the drive letter from a path (e.g., `C:test` -> `C`)
+    /// Helper to extract the drive letter from a path, keep case
+    ///  (e.g., `C:test` -> `C`, `d:\temp` -> `d`)
     fn extract_drive_letter(path: &Path) -> Option<char> {
         path.to_str()
             .and_then(|s| s.chars().next())
             .filter(|c| c.is_ascii_alphabetic())
     }
 
-    /// Ensure a path has a trailing `\`
+    /// Ensure a path has a trailing `\\` or '/'
     fn ensure_trailing_delimiter(path: &str) -> String {
         if !path.ends_with('\\') && !path.ends_with('/') {
             format!(r"{}\", path)
@@ -234,23 +202,6 @@ fn get_full_path_name_w(path_str: &str) -> Option<String> {
     }
 }
 
-use std::sync::{Mutex, OnceLock};
-
-/// Global shared_map instance of DrivePwdMap
-static DRIVE_PWD_MAP: OnceLock<Mutex<DriveToPwdMap>> = OnceLock::new();
-
-/// Access the shared_map instance
-fn get_shared_drive_pwd_map() -> &'static Mutex<DriveToPwdMap> {
-    DRIVE_PWD_MAP.get_or_init(|| {
-        let shared_map = Mutex::new(DriveToPwdMap::new());
-        // Clear these env_vars as CMD
-        for drive_letter in 'A'..='Z' {
-            std::env::remove_var(DriveToPwdMap::env_var_for_drive(drive_letter));
-        }
-        shared_map
-    })
-}
-
 /// Test for Drive2PWD map
 #[cfg(test)]
 mod tests {
@@ -261,24 +212,25 @@ mod tests {
     /// possible result, here can have more accurate test assert
     #[test]
     fn test_usage_for_pwd_per_drive() {
-        use shared_map::{expand_pwd, set_pwd};
+        let mut map = DriveToPwdMap::new();
+
         // Set PWD for drive E
-        assert!(set_pwd(Path::new(r"E:\Users\Home")).is_ok());
+        assert!(map.set_pwd(Path::new(r"E:\Users\Home")).is_ok());
 
         // Expand a relative path
-        let expanded = expand_pwd(Path::new("e:test"));
+        let expanded = map.expand_pwd(Path::new("e:test"));
         assert_eq!(expanded, Some(PathBuf::from(r"E:\Users\Home\test")));
 
         // Will NOT expand an absolute path
-        let expanded = expand_pwd(Path::new(r"E:\absolute\path"));
+        let expanded = map.expand_pwd(Path::new(r"E:\absolute\path"));
         assert_eq!(expanded, None);
 
         // Expand with no drive letter
-        let expanded = expand_pwd(Path::new(r"\no_drive"));
+        let expanded = map.expand_pwd(Path::new(r"\no_drive"));
         assert_eq!(expanded, None);
 
         // Expand with no PWD set for the drive
-        let expanded = expand_pwd(Path::new("F:test"));
+        let expanded = map.expand_pwd(Path::new("F:test"));
         if let Some(sys_abs) = get_full_path_name_w("F:") {
             assert_eq!(
                 expanded,
@@ -294,10 +246,6 @@ mod tests {
 
     #[test]
     fn test_read_pwd_per_drive_at_start_up() {
-        // Invoke shared_map to ensure environment read and cleared
-        use shared_map::expand_pwd;
-        let _ = expand_pwd(Path::new(r"\invalidPath"));
-
         std::env::set_var(DriveToPwdMap::env_var_for_drive('g'), r"G:\Users\Nushell");
         std::env::set_var(DriveToPwdMap::env_var_for_drive('H'), r"h:\Share\Nushell");
         let map = DriveToPwdMap::new();
@@ -330,39 +278,6 @@ mod tests {
             env.get(&DriveToPwdMap::env_var_for_drive('J')).unwrap(),
             r"J:\User"
         );
-    }
-
-    #[test]
-    fn test_shared_set_and_get_pwd() {
-        // To avoid conflict with other test threads (on testing result),
-        // use different drive set in multiple shared_map tests
-        let drive_pwd_map = get_shared_drive_pwd_map();
-        {
-            let mut map = drive_pwd_map.lock().unwrap();
-
-            // Set PWD for drive K
-            assert!(map.set_pwd(Path::new(r"k:\Users\Example")).is_ok());
-        }
-
-        {
-            let map = drive_pwd_map.lock().unwrap();
-
-            // Get PWD for drive K
-            assert_eq!(map.get_pwd('K'), Ok(r"K:\Users\Example".to_string()));
-
-            // Get PWD for drive E (not set, should return E:\) ???
-            // 11-21-2024 happened to start nushell from drive E:,
-            // run toolkit test 'toolkit check pr' then this test failed
-            // since for drive that has not bind PWD, if the drive really exists
-            // in system and current directory is not drive root, this test will
-            // fail if assuming result should be r"X:\", and there might also have
-            // other cases tested by other threads which might change PWD.
-            if let Some(pwd_on_e) = get_full_path_name_w("L:") {
-                assert_eq!(map.get_pwd('L'), Ok(pwd_on_e));
-            } else {
-                assert_eq!(map.get_pwd('l'), Ok(r"L:\".to_string()));
-            }
-        }
     }
 
     #[test]

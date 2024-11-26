@@ -61,7 +61,7 @@ impl Command for UMkdir {
     ) -> Result<PipelineData, ShellError> {
         #[allow(deprecated)]
         let cwd = current_dir(engine_state, stack)?;
-        let mut expander = stack.clone();
+        let expander = stack.clone();
         let mut directories = get_rest_for_glob_pattern(engine_state, stack, call, 0)?
             .into_iter()
             .map(|dir| expander.expand_path_with(dir.item.as_ref(), &cwd, dir.item.is_expand()))

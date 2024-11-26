@@ -2,7 +2,6 @@ use crate::progress_bar;
 use nu_engine::get_eval_block;
 #[allow(deprecated)]
 use nu_engine::{command_prelude::*, current_dir};
-//use nu_path::expand_path_with;
 use nu_protocol::{
     ast, byte_stream::copy_with_signals, process::ChildPipe, ByteStreamSource, DataSource, OutDest,
     PipelineMetadata, Signals,
