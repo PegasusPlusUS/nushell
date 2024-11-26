@@ -158,7 +158,8 @@ impl DriveToPwdMap {
                     None => Err(PathError::InvalidDriveLetter),
                     Some(_) => {
                         let drive_index = drive_letter as usize - 'A' as usize;
-                        self.map[drive_index] = Some(drive_letter.to_string() + c.as_str());
+                        let normalized_pwd = drive_letter.to_string() + c.as_str();
+                        self.map[drive_index] = Some(normalized_pwd);
                         Ok(())
                     }
                 }

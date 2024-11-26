@@ -55,6 +55,8 @@ pub struct Stack {
     pub(crate) out_dest: StackOutDest,
     #[cfg(windows)]
     pub pwd_per_drive: nu_path::DriveToPwdMap,
+    #[cfg(windows)]
+    pub is_cd: bool,
 }
 
 impl Default for Stack {
@@ -86,6 +88,8 @@ impl Stack {
             out_dest: StackOutDest::new(),
             #[cfg(windows)]
             pwd_per_drive: nu_path::DriveToPwdMap::new(),
+            #[cfg(windows)]
+            is_cd: false,
         }
     }
 
@@ -108,6 +112,8 @@ impl Stack {
             out_dest: parent.out_dest.clone(),
             #[cfg(windows)]
             pwd_per_drive: parent.pwd_per_drive.clone(),
+            #[cfg(windows)]
+            is_cd: false,
             parent_stack: Some(parent),
         }
     }
@@ -134,6 +140,10 @@ impl Stack {
         unique_stack.env_hidden = child.env_hidden;
         unique_stack.active_overlays = child.active_overlays;
         unique_stack.config = child.config;
+        #[cfg(windows)]
+        if child.is_cd {
+            unique_stack.pwd_per_drive = child.pwd_per_drive.clone();
+        }
         unique_stack
     }
 
@@ -327,6 +337,8 @@ impl Stack {
             out_dest: self.out_dest.clone(),
             #[cfg(windows)]
             pwd_per_drive: self.pwd_per_drive.clone(),
+            #[cfg(windows)]
+            is_cd: false,
         }
     }
 
@@ -362,6 +374,8 @@ impl Stack {
             out_dest: self.out_dest.clone(),
             #[cfg(windows)]
             pwd_per_drive: self.pwd_per_drive.clone(),
+            #[cfg(windows)]
+            is_cd: false,
         }
     }
 
@@ -739,7 +753,10 @@ impl Stack {
             self.add_env_var("PWD".into(), value);
             // Sync with PWD-per-drive
             #[cfg(windows)]
-            let _ = self.pwd_per_drive.set_pwd(&path);
+            {
+                let _ = self.pwd_per_drive.set_pwd(&path);
+                self.is_cd = true;
+            }
             Ok(())
         }
     }
