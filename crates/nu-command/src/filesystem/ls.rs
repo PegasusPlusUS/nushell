@@ -322,7 +322,7 @@ fn ls_for_one_pattern(
     let hidden_dir_specified = is_hidden_dir(pattern_arg.as_ref());
     let path = pattern_arg.into_spanned(p_tag);
     let (prefix, paths) = if just_read_dir {
-        let expanded = nu_path::expand_path_with(path.item.as_ref(), &cwd, path.item.is_expand());
+        let expanded = stack.expand_path_with(path.item.as_ref(), &cwd, path.item.is_expand());
         let paths = read_dir(&expanded, p_tag, use_threads)?;
         // just need to read the directory, so prefix is path itself.
         (Some(expanded), paths)
