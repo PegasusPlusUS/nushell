@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 /// Usage for pwd_per_drive on windows
 ///
 /// Upon change PWD, call set_pwd() with absolute path
@@ -50,9 +49,10 @@ use std::collections::HashMap;
 ///     }
 /// }
 /// ```
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-#[derive(PartialEq, Debug)]
+#[derive(Debug, PartialEq)]
 pub enum PathError {
     InvalidDriveLetter,
     InvalidPath,
@@ -79,7 +79,7 @@ pub mod shared_map {
     pub fn expand_pwd(path: &Path) -> Option<PathBuf> {
         if need_expand(path) {
             if let Ok(mut pwd_per_drive) = get_shared_drive_pwd_map().lock() {
-                return pwd_per_drive.expand_path(path);
+                return pwd_per_drive.expand_pwd(path);
             }
         }
         None
@@ -105,6 +105,7 @@ fn need_expand(path: &Path) -> bool {
     false
 }
 
+#[derive(Clone, Debug)]
 pub struct DriveToPwdMap {
     map: [Option<String>; 26], // Fixed-size array for A-Z
 }
@@ -192,7 +193,7 @@ impl DriveToPwdMap {
     /// Expand a relative path using the PWD-per-drive, return PathBuf
     /// of absolute path.
     /// Return None if path is not valid or can't get drive letter.
-    pub fn expand_path(&mut self, path: &Path) -> Option<PathBuf> {
+    pub fn expand_pwd(&mut self, path: &Path) -> Option<PathBuf> {
         if need_expand(path) {
             let path_str = path.to_str()?;
             if let Some(drive_letter) = Self::extract_drive_letter(path) {
@@ -227,7 +228,7 @@ impl DriveToPwdMap {
 
 fn get_full_path_name_w(path_str: &str) -> Option<String> {
     use omnipath::sys_absolute;
-    if let Ok(path_sys_abs) = sys_absolute(PathBuf::from(path_str).as_path()) {
+    if let Ok(path_sys_abs) = sys_absolute(Path::new(path_str)) {
         Some(path_sys_abs.to_str()?.to_string())
     } else {
         None
@@ -302,11 +303,11 @@ mod tests {
         std::env::set_var(DriveToPwdMap::env_var_for_drive('H'), r"h:\Share\Nushell");
         let mut map = DriveToPwdMap::new();
         assert_eq!(
-            map.expand_path(Path::new("g:")),
+            map.expand_pwd(Path::new("g:")),
             Some(PathBuf::from(r"G:\Users\Nushell\"))
         );
         assert_eq!(
-            map.expand_path(Path::new("H:")),
+            map.expand_pwd(Path::new("H:")),
             Some(PathBuf::from(r"H:\Share\Nushell\"))
         );
 
@@ -366,7 +367,7 @@ mod tests {
     }
 
     #[test]
-    fn test_expand_path() {
+    fn test_expand_pwd() {
         let mut drive_map = DriveToPwdMap::new();
 
         // Set PWD for drive 'M:'
@@ -375,22 +376,22 @@ mod tests {
         assert_eq!(drive_map.set_pwd(Path::new(r"m:\Users\Home")), Ok(()));
 
         // Expand a relative path on "M:"
-        let expanded = drive_map.expand_path(Path::new(r"M:test"));
+        let expanded = drive_map.expand_pwd(Path::new(r"M:test"));
         assert_eq!(expanded, Some(PathBuf::from(r"M:\Users\Home\test")));
         // or on "m:"
-        let expanded = drive_map.expand_path(Path::new(r"m:test"));
+        let expanded = drive_map.expand_pwd(Path::new(r"m:test"));
         assert_eq!(expanded, Some(PathBuf::from(r"M:\Users\Home\test")));
 
         // Expand an absolute path
-        let expanded = drive_map.expand_path(Path::new(r"m:\absolute\path"));
+        let expanded = drive_map.expand_pwd(Path::new(r"m:\absolute\path"));
         assert_eq!(expanded, None);
 
         // Expand with no drive letter
-        let expanded = drive_map.expand_path(Path::new(r"\no_drive"));
+        let expanded = drive_map.expand_pwd(Path::new(r"\no_drive"));
         assert_eq!(expanded, None);
 
         // Expand with no PWD set for the drive
-        let expanded = drive_map.expand_path(Path::new("N:test"));
+        let expanded = drive_map.expand_pwd(Path::new("N:test"));
         if let Some(pwd_on_drive) = get_full_path_name_w("N:") {
             assert_eq!(
                 expanded,

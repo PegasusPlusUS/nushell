@@ -8,6 +8,7 @@ use crate::{
 use std::{
     collections::{HashMap, HashSet},
     fs::File,
+    path::{Path, PathBuf},
     sync::Arc,
 };
 
@@ -83,6 +84,8 @@ impl Stack {
             parent_deletions: vec![],
             config: None,
             out_dest: StackOutDest::new(),
+            #[cfg(windows)]
+            pwd_per_drive: nu_path::DriveToPwdMap::new(),
         }
     }
 
@@ -103,6 +106,8 @@ impl Stack {
             parent_deletions: vec![],
             config: parent.config.clone(),
             out_dest: parent.out_dest.clone(),
+            #[cfg(windows)]
+            pwd_per_drive: parent.pwd_per_drive.clone(),
             parent_stack: Some(parent),
         }
     }
@@ -320,6 +325,8 @@ impl Stack {
             parent_deletions: vec![],
             config: self.config.clone(),
             out_dest: self.out_dest.clone(),
+            #[cfg(windows)]
+            pwd_per_drive: self.pwd_per_drive.clone(),
         }
     }
 
@@ -353,6 +360,8 @@ impl Stack {
             parent_deletions: vec![],
             config: self.config.clone(),
             out_dest: self.out_dest.clone(),
+            #[cfg(windows)]
+            pwd_per_drive: self.pwd_per_drive.clone(),
         }
     }
 
@@ -730,9 +739,21 @@ impl Stack {
             self.add_env_var("PWD".into(), value);
             // Sync with PWD-per-drive
             #[cfg(windows)]
-            let _ = nu_path::set_pwd(&path);
+            let _ = self.pwd_per_drive.set_pwd(&path);
             Ok(())
         }
+    }
+    pub fn expand_path_with<P, Q>(&mut self, path: P, relative_to: Q, expand_tilde: bool) -> PathBuf
+    where
+        P: AsRef<Path>,
+        Q: AsRef<Path>,
+    {
+        #[cfg(windows)]
+        if let Some(absolute_path) = self.pwd_per_drive.expand_pwd(path.as_ref()) {
+            return absolute_path;
+        }
+
+        nu_path::expand_path_with::<P, Q>(path, relative_to, expand_tilde)
     }
 }
 
