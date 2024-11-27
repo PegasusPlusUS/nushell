@@ -113,7 +113,7 @@ impl Stack {
             #[cfg(windows)]
             pwd_per_drive: parent.pwd_per_drive.clone(),
             #[cfg(windows)]
-            is_cd: false,
+            is_cd: parent.is_cd,
             parent_stack: Some(parent),
         }
     }
@@ -141,7 +141,7 @@ impl Stack {
         unique_stack.active_overlays = child.active_overlays;
         unique_stack.config = child.config;
         #[cfg(windows)]
-        if child.is_cd {
+        {// if child.is_cd 
             unique_stack.pwd_per_drive = child.pwd_per_drive.clone();
         }
         unique_stack
@@ -338,7 +338,7 @@ impl Stack {
             #[cfg(windows)]
             pwd_per_drive: self.pwd_per_drive.clone(),
             #[cfg(windows)]
-            is_cd: false,
+            is_cd: self.is_cd,
         }
     }
 
@@ -375,7 +375,7 @@ impl Stack {
             #[cfg(windows)]
             pwd_per_drive: self.pwd_per_drive.clone(),
             #[cfg(windows)]
-            is_cd: false,
+            is_cd: self.is_cd,
         }
     }
 

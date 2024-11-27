@@ -79,19 +79,9 @@ pub struct DriveToPwdMap {
 
 impl DriveToPwdMap {
     pub fn new() -> Self {
-        // Initialize by current PWD-per-drive
-        let mut map: [Option<String>; 26] = Default::default();
-        for (drive_index, drive_letter) in ('A'..='Z').enumerate() {
-            let env_var = Self::env_var_for_drive(drive_letter);
-            if let Ok(env_pwd) = std::env::var(&env_var) {
-                if env_pwd.len() > 3 {
-                    #[cfg(not(test))]
-                    std::env::remove_var(env_var);
-                    map[drive_index] = Some(env_pwd);
-                }
-            }
+        Self {
+            map: Default::default(),
         }
-        Self { map }
     }
 
     pub fn env_var_for_drive(drive_letter: char) -> String {
@@ -126,6 +116,7 @@ impl DriveToPwdMap {
                     Some(_) => {
                         let drive_index = drive_letter as usize - 'A' as usize;
                         let normalized_pwd = drive_letter.to_string() + c.as_str();
+                        println!("Set PWD {}", normalized_pwd);
                         self.map[drive_index] = Some(normalized_pwd);
                         Ok(())
                     }
@@ -144,6 +135,7 @@ impl DriveToPwdMap {
         if drive_letter.is_ascii_alphabetic() {
             let drive_letter = drive_letter.to_ascii_uppercase();
             let drive_index = drive_letter as usize - 'A' as usize;
+            println!("Get PWD, saved content: {:?}", self.map[drive_index]);
             Ok(self.map[drive_index].clone().unwrap_or_else(|| {
                 if let Some(sys_pwd) = get_full_path_name_w(&format!("{}:", drive_letter)) {
                     sys_pwd

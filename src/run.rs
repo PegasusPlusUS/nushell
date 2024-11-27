@@ -17,9 +17,25 @@ fn init_pwd_per_drive(
     engine_state: &EngineState,
     stack: &mut Stack,
 ) {
+    use std::path::Path;
+    use nu_path::DriveToPwdMap;
+    
+    // Read environment for PWD-per-drive
+    for drive_letter in 'A'..='Z' {
+        let env_var = DriveToPwdMap::env_var_for_drive(drive_letter);
+        if let Some(env_pwd) = engine_state.get_env_var(&env_var) {
+            if let Ok(pwd_str) = nu_engine::env_to_string(&env_var, &env_pwd, engine_state, stack) {
+                //println!("Get Env({}) {}", env_var, pwd_str);
+                let _ = stack.pwd_per_drive.set_pwd(Path::new(&pwd_str));
+                stack.remove_env_var(engine_state, &env_var);
+                continue;
+            }
+        }
+        //println!("Can't find Env for ({})", env_var);
+    }
+
     if let Ok(abs_pwd) = engine_state.cwd(None) {
         if let Some(abs_pwd_str) = abs_pwd.to_str() {
-            use std::path::Path;
             let _ = stack.pwd_per_drive.set_pwd(Path::new(abs_pwd_str));
         }
     }
