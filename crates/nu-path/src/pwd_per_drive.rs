@@ -242,6 +242,8 @@ mod tests {
         }
     }
 
+    // Now DriveToPwdMap::new() do not read environment, will let stack help init.
+    #[ignore]
     #[test]
     fn test_read_pwd_per_drive_at_start_up() {
         std::env::set_var(DriveToPwdMap::env_var_for_drive('g'), r"G:\Users\Nushell");
