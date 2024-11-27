@@ -44,7 +44,8 @@ fn get_current_dir() {
     assert_eq!(cwd, result.out);
     #[cfg(windows)]
     {
-        assert_eq!(
+          // cwd == r"e:\Study\Nushell", while result.out == r"E:\Study\Nushell"
+          assert_eq!(
             cwd.chars().next().unwrap().to_ascii_uppercase(),
             result.out.chars().next().unwrap().to_ascii_uppercase()
         );
