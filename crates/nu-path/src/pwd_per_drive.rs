@@ -77,6 +77,12 @@ pub struct DriveToPwdMap {
     map: [Option<String>; 26], // Fixed-size array for A-Z
 }
 
+impl Default for DriveToPwdMap {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DriveToPwdMap {
     pub fn new() -> Self {
         Self {
