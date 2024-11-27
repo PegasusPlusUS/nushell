@@ -1412,7 +1412,8 @@ enum RedirectionStream {
 /// Open a file for redirection
 fn open_file(ctx: &EvalContext<'_>, path: &Value, append: bool) -> Result<Arc<File>, ShellError> {
     let path_expanded =
-        ctx.stack.expand_path_with(path.as_str()?, ctx.engine_state.cwd(Some(ctx.stack))?, true);
+        ctx.stack
+            .expand_path_with(path.as_str()?, ctx.engine_state.cwd(Some(ctx.stack))?, true);
     let mut options = File::options();
     if append {
         options.append(true);

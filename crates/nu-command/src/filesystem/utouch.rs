@@ -159,8 +159,11 @@ impl Command for UTouch {
             if file_glob.item.as_ref() == "-" {
                 input_files.push(InputFile::Stdout);
             } else {
-                let path =
-                    stack.expand_path_with(file_glob.item.as_ref(), &cwd, file_glob.item.is_expand());
+                let path = stack.expand_path_with(
+                    file_glob.item.as_ref(),
+                    &cwd,
+                    file_glob.item.is_expand(),
+                );
                 input_files.push(InputFile::Path(path));
             }
         }

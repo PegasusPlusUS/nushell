@@ -828,7 +828,7 @@ fn do_auto_cd(
     span: Span,
 ) {
     #[cfg(windows)]
-    let path = if let Some(abs_path) =  stack.pwd_per_drive.expand_pwd(path.as_path()) {
+    let path = if let Some(abs_path) = stack.pwd_per_drive.expand_pwd(path.as_path()) {
         abs_path
     } else {
         path

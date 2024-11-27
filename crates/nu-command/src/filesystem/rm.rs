@@ -146,7 +146,8 @@ fn rm(
 
     for (idx, path) in paths.clone().into_iter().enumerate() {
         if let Some(ref home) = home {
-            if stack.expand_path_with(path.item.as_ref(), &currentdir_path, path.item.is_expand())
+            if stack
+                .expand_path_with(path.item.as_ref(), &currentdir_path, path.item.is_expand())
                 .to_string_lossy()
                 .as_ref()
                 == home.as_str()
