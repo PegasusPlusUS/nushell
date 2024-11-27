@@ -116,7 +116,6 @@ impl DriveToPwdMap {
                     Some(_) => {
                         let drive_index = drive_letter as usize - 'A' as usize;
                         let normalized_pwd = drive_letter.to_string() + c.as_str();
-                        println!("Set PWD {}", normalized_pwd);
                         self.map[drive_index] = Some(normalized_pwd);
                         Ok(())
                     }

@@ -864,10 +864,6 @@ fn do_auto_cd(
         report_shell_error(engine_state, &err);
         return;
     };
-    #[cfg(windows)]
-    {
-        stack.is_cd = true;
-    }
     let cwd = Value::string(cwd, span);
 
     let shells = stack.get_env_var(engine_state, "NUSHELL_SHELLS");
