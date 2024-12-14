@@ -38,7 +38,7 @@ impl Command for SubCommand {
     fn run(
         &self,
         engine_state: &EngineState,
-        _stack: &mut Stack,
+        stack: &mut Stack,
         call: &Call,
         input: PipelineData,
     ) -> Result<PipelineData, ShellError> {
@@ -49,8 +49,11 @@ impl Command for SubCommand {
         if matches!(input, PipelineData::Empty) {
             return Err(ShellError::PipelineEmpty { dst_span: head });
         }
+        
+        let stack_clone = stack.clone();
+        let engine_state_clone = engine_state.clone();
         input.map(
-            move |value| super::operate(&split, &args, value, head),
+            move |value| super::operate(&stack_clone, &engine_state_clone, &split, &args, value, head),
             engine_state.signals(),
         )
     }
@@ -68,8 +71,9 @@ impl Command for SubCommand {
         if matches!(input, PipelineData::Empty) {
             return Err(ShellError::PipelineEmpty { dst_span: head });
         }
+        let engine_state = working_set.permanent_state.clone();
         input.map(
-            move |value| super::operate(&split, &args, value, head),
+            move |value| super::operate(&Stack::new(), &engine_state, &split, &args, value, head),
             working_set.permanent().signals(),
         )
     }
@@ -155,7 +159,7 @@ impl Command for SubCommand {
     }
 }
 
-fn split(path: &Path, span: Span, _: &Arguments) -> Value {
+fn split(_stack: &Stack, _engine_state: &EngineState, path: &Path, span: Span, _: &Arguments) -> Value {
     Value::list(
         path.components()
             .filter_map(|comp| {

@@ -60,8 +60,11 @@ If the path does not exist, null will be returned."#
         if matches!(input, PipelineData::Empty) {
             return Err(ShellError::PipelineEmpty { dst_span: head });
         }
+        
+        let stack_clone = stack.clone();
+        let engine_state_clone = engine_state.clone();
         input.map(
-            move |value| super::operate(&path_type, &args, value, head),
+            move |value| super::operate(&stack_clone, &engine_state_clone, &path_type, &args, value, head),
             engine_state.signals(),
         )
     }
@@ -81,8 +84,10 @@ If the path does not exist, null will be returned."#
         if matches!(input, PipelineData::Empty) {
             return Err(ShellError::PipelineEmpty { dst_span: head });
         }
+
+        let engine_state = working_set.permanent_state.clone();
         input.map(
-            move |value| super::operate(&path_type, &args, value, head),
+            move |value| super::operate(&Stack::new(), &engine_state, &path_type, &args, value, head),
             working_set.permanent().signals(),
         )
     }
@@ -103,7 +108,7 @@ If the path does not exist, null will be returned."#
     }
 }
 
-fn path_type(path: &Path, span: Span, args: &Arguments) -> Value {
+fn path_type(_stack: &Stack, _engine_state: &EngineState, path: &Path, span: Span, args: &Arguments) -> Value {
     let path = nu_path::expand_path_with(path, &args.pwd, true);
     match path.symlink_metadata() {
         Ok(metadata) => Value::string(get_file_type(&metadata), span),

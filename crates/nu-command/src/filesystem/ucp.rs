@@ -1,6 +1,6 @@
 #[allow(deprecated)]
 use nu_engine::{command_prelude::*, current_dir};
-use nu_protocol::NuGlob;
+use nu_protocol::{engine::expand_path_with, NuGlob};
 use std::path::PathBuf;
 use uu_cp::{BackupMode, CopyMode, UpdateMode};
 
@@ -185,7 +185,13 @@ impl Command for UCp {
         ));
         #[allow(deprecated)]
         let cwd = current_dir(engine_state, stack)?;
-        let target_path = nu_path::expand_path_with(target_path, &cwd, target.item.is_expand());
+        let target_path = expand_path_with(
+            stack,
+            engine_state,
+            target_path,
+            &cwd,
+            target.item.is_expand(),
+        );
         if target.item.as_ref().ends_with(PATH_SEPARATOR) && !target_path.is_dir() {
             return Err(ShellError::GenericError {
                 error: "is not a directory".into(),
@@ -240,7 +246,7 @@ impl Command for UCp {
         for (sources, need_expand_tilde) in sources.iter_mut() {
             for src in sources.iter_mut() {
                 if !src.is_absolute() {
-                    *src = nu_path::expand_path_with(&*src, &cwd, *need_expand_tilde);
+                    *src = expand_path_with(stack, engine_state, &*src, &cwd, *need_expand_tilde);
                 }
             }
         }

@@ -1,6 +1,5 @@
 use nu_engine::command_prelude::*;
-use nu_path::expand_path_with;
-use nu_protocol::engine::StateWorkingSet;
+use nu_protocol::engine::{expand_path_with, StateWorkingSet};
 
 #[derive(Clone)]
 pub struct SubCommand;
@@ -54,6 +53,7 @@ impl Command for SubCommand {
     ) -> Result<PipelineData, ShellError> {
         let path: Option<String> = call.opt_const(working_set, 0)?;
         let cwd = working_set.permanent_state.cwd(None)?;
+        let stack = &Stack::new();
         let current_file =
             working_set
                 .files
@@ -65,6 +65,8 @@ impl Command for SubCommand {
 
         let out = if let Some(path) = path {
             let dir = expand_path_with(
+                stack,
+                working_set.permanent_state,
                 current_file
                     .parent()
                     .ok_or_else(|| ShellError::FileNotFoundCustom {
@@ -75,12 +77,12 @@ impl Command for SubCommand {
                 true,
             );
             Value::string(
-                expand_path_with(path, dir, false).to_string_lossy(),
+                expand_path_with(stack, working_set.permanent_state, path, dir, false).to_string_lossy(),
                 call.head,
             )
         } else {
             Value::string(
-                expand_path_with(current_file, &cwd, true).to_string_lossy(),
+                expand_path_with(stack, working_set.permanent_state, current_file, &cwd, true).to_string_lossy(),
                 call.head,
             )
         };

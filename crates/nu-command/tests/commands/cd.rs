@@ -323,3 +323,27 @@ fn pwd_recovery() {
 
     assert_eq!(actual.out, "/");
 }
+
+#[cfg(windows)]
+#[test]
+fn filesystem_from_non_root_change_to_another_drive_non_root_then_using_relative_path_go_back() {
+    Playground::setup("cd_test_22", |dirs, sandbox| {
+        sandbox.mkdir("test_folder");
+
+        let _actual = nu!(
+            cwd: dirs.test(),
+            r#"
+                subst Z: test_folder
+                Z:
+                echo "some text" | save test_file.txt
+                cd ~
+                subst Z: /d
+            "#
+        );
+        assert!(dirs
+            .test()
+            .join("test_folder")
+            .join("test_file.txt")
+            .exists());
+    })
+}

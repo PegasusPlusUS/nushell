@@ -1,8 +1,7 @@
 use super::PathSubcommandArguments;
 #[allow(deprecated)]
 use nu_engine::{command_prelude::*, current_dir, current_dir_const};
-use nu_path::expand_path_with;
-use nu_protocol::engine::StateWorkingSet;
+use nu_protocol::engine::{expand_path_with, StateWorkingSet};
 use std::path::{Path, PathBuf};
 
 struct Arguments {
@@ -64,8 +63,11 @@ Also note that if you don't have a permission to a directory of a path, false wi
         if matches!(input, PipelineData::Empty) {
             return Err(ShellError::PipelineEmpty { dst_span: head });
         }
+        
+        let stack_clone = stack.clone();
+        let engine_state_clone = engine_state.clone();
         input.map(
-            move |value| super::operate(&exists, &args, value, head),
+            move |value| super::operate(&stack_clone, &engine_state_clone, &exists, &args, value, head),
             engine_state.signals(),
         )
     }
@@ -86,8 +88,10 @@ Also note that if you don't have a permission to a directory of a path, false wi
         if matches!(input, PipelineData::Empty) {
             return Err(ShellError::PipelineEmpty { dst_span: head });
         }
+        
+        let engine_state = working_set.permanent_state.clone();
         input.map(
-            move |value| super::operate(&exists, &args, value, head),
+            move |value| super::operate(&Stack::new(), &engine_state, &exists, &args, value, head),
             working_set.permanent().signals(),
         )
     }
@@ -131,11 +135,11 @@ Also note that if you don't have a permission to a directory of a path, false wi
     }
 }
 
-fn exists(path: &Path, span: Span, args: &Arguments) -> Value {
+fn exists(stack: &Stack, engine_state: &EngineState, path: &Path, span: Span, args: &Arguments) -> Value {
     if path.as_os_str().is_empty() {
         return Value::bool(false, span);
     }
-    let path = expand_path_with(path, &args.pwd, true);
+    let path = expand_path_with(stack, engine_state, path, &args.pwd, true);
     let exists = if args.not_follow_symlink {
         // symlink_metadata returns true if the file/folder exists
         // whether it is a symbolic link or not. Sorry, but returns Err

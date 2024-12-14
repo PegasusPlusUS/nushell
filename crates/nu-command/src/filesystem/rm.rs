@@ -2,8 +2,7 @@ use super::util::try_interaction;
 #[allow(deprecated)]
 use nu_engine::{command_prelude::*, env::current_dir};
 use nu_glob::MatchOptions;
-use nu_path::expand_path_with;
-use nu_protocol::{report_shell_error, NuGlob};
+use nu_protocol::{engine::expand_path_with, report_shell_error, NuGlob};
 #[cfg(unix)]
 use std::os::unix::prelude::FileTypeExt;
 use std::{
@@ -146,9 +145,15 @@ fn rm(
 
     for (idx, path) in paths.clone().into_iter().enumerate() {
         if let Some(ref home) = home {
-            if expand_path_with(path.item.as_ref(), &currentdir_path, path.item.is_expand())
-                .to_string_lossy()
-                .as_ref()
+            if expand_path_with(
+                stack,
+                engine_state,
+                path.item.as_ref(),
+                &currentdir_path,
+                path.item.is_expand(),
+            )
+            .to_string_lossy()
+            .as_ref()
                 == home.as_str()
             {
                 unique_argument_check = Some(path.span);
@@ -232,6 +237,8 @@ fn rm(
 
     for target in paths {
         let path = expand_path_with(
+            stack,
+            engine_state,
             target.item.as_ref(),
             &currentdir_path,
             target.item.is_expand(),
@@ -274,7 +281,9 @@ fn rm(
                             }
 
                             all_targets
-                                .entry(nu_path::expand_path_with(
+                                .entry(expand_path_with(
+                                    stack,
+                                    engine_state,
                                     f,
                                     &currentdir_path,
                                     target.item.is_expand(),

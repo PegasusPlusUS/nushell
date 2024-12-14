@@ -61,8 +61,10 @@ On Windows, an extra 'prefix' column is added."#
         if matches!(input, PipelineData::Empty) {
             return Err(ShellError::PipelineEmpty { dst_span: head });
         }
+        let stack = stack.clone();
+        let engine_state_clone = engine_state.clone();
         input.map(
-            move |value| super::operate(&parse, &args, value, head),
+            move |value| super::operate(&stack, &engine_state_clone, &parse, &args, value, head),
             engine_state.signals(),
         )
     }
@@ -82,8 +84,9 @@ On Windows, an extra 'prefix' column is added."#
         if matches!(input, PipelineData::Empty) {
             return Err(ShellError::PipelineEmpty { dst_span: head });
         }
+        let engine_state = working_set.permanent_state.clone();
         input.map(
-            move |value| super::operate(&parse, &args, value, head),
+            move |value| super::operate(&Stack::new(), &engine_state, &parse, &args, value, head),
             working_set.permanent().signals(),
         )
     }
@@ -183,7 +186,7 @@ On Windows, an extra 'prefix' column is added."#
     }
 }
 
-fn parse(path: &Path, span: Span, args: &Arguments) -> Value {
+fn parse(_stack: &Stack, _engine_state: &EngineState, path: &Path, span: Span, args: &Arguments) -> Value {
     let mut record = Record::new();
 
     #[cfg(windows)]

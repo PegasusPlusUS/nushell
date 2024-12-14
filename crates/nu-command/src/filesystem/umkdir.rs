@@ -1,6 +1,6 @@
 #[allow(deprecated)]
 use nu_engine::{command_prelude::*, current_dir};
-use nu_protocol::NuGlob;
+use nu_protocol::{engine::expand_path_with, NuGlob};
 use uu_mkdir::mkdir;
 #[cfg(not(windows))]
 use uucore::mode;
@@ -59,14 +59,23 @@ impl Command for UMkdir {
     ) -> Result<PipelineData, ShellError> {
         #[allow(deprecated)]
         let cwd = current_dir(engine_state, stack)?;
-        let mut directories = call
+        let directories: Vec<_> = call
             .rest::<Spanned<NuGlob>>(engine_state, stack, 0)?
             .into_iter()
-            .map(|dir| nu_path::expand_path_with(dir.item.as_ref(), &cwd, dir.item.is_expand()))
-            .peekable();
+            .map(|dir| {
+                expand_path_with(
+                    stack,
+                    engine_state,
+                    dir.item.as_ref(),
+                    &cwd,
+                    dir.item.is_expand(),
+                )
+            })
+            .collect();
 
         let is_verbose = call.has_flag(engine_state, stack, "verbose")?;
 
+        let mut directories = directories.into_iter().peekable();
         if directories.peek().is_none() {
             return Err(ShellError::MissingParameter {
                 param_name: "requires directory paths".to_string(),
