@@ -5,7 +5,8 @@ use crate::{
         ArgumentStack, EngineState, ErrorHandlerStack, Redirection, StackCallArgGuard,
         StackCollectValueGuard, StackIoGuard, StackOutDest, DEFAULT_OVERLAY_NAME,
     },
-    Config, IntoValue, OutDest, ShellError, Span, Value, VarId, ENV_VARIABLE_ID, NU_VARIABLE_ID,
+    report_shell_error, Config, IntoValue, OutDest, ShellError, Span, Value, VarId,
+    ENV_VARIABLE_ID, NU_VARIABLE_ID,
 };
 use nu_utils::IgnoreCaseExt;
 use std::{
@@ -55,6 +56,7 @@ pub struct Stack {
     /// Locally updated config. Use [`.get_config()`](Self::get_config) to access correctly.
     pub config: Option<Arc<Config>>,
     pub(crate) out_dest: StackOutDest,
+    set_pwd_shell_err: Option<ShellError>,
 }
 
 impl Default for Stack {
@@ -84,6 +86,7 @@ impl Stack {
             parent_deletions: vec![],
             config: None,
             out_dest: StackOutDest::new(),
+            set_pwd_shell_err: None,
         }
     }
 
@@ -105,6 +108,7 @@ impl Stack {
             config: parent.config.clone(),
             out_dest: parent.out_dest.clone(),
             parent_stack: Some(parent),
+            set_pwd_shell_err: None,
         }
     }
 
@@ -252,10 +256,26 @@ impl Stack {
         }
     }
 
+    pub fn add_pwd(&mut self, engine_state: &EngineState, value: Value) {
+        self.add_env_var("PWD".into(), value);
+
+        if let Some(e) = self.has_set_pwd_shell_err() {
+            report_shell_error(engine_state, &e);
+        }
+    }
+
+    fn has_set_pwd_shell_err(&mut self) -> Option<ShellError> {
+        let result = self.set_pwd_shell_err.clone();
+        self.set_pwd_shell_err = None;
+        result
+    }
+
     pub fn add_env_var(&mut self, var: String, value: Value) {
         #[cfg(windows)]
         if var == "PWD" {
-            set_pwd(self, value.clone());
+            if let Err(e) = set_pwd(self, value.clone()) {
+                self.set_pwd_shell_err = Some(e);
+            }
         }
 
         if let Some(last_overlay) = self.active_overlays.last() {
@@ -326,6 +346,7 @@ impl Stack {
             parent_deletions: vec![],
             config: self.config.clone(),
             out_dest: self.out_dest.clone(),
+            set_pwd_shell_err: None,
         }
     }
 
@@ -359,6 +380,7 @@ impl Stack {
             parent_deletions: vec![],
             config: self.config.clone(),
             out_dest: self.out_dest.clone(),
+            set_pwd_shell_err: None,
         }
     }
 

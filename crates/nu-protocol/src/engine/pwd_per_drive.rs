@@ -1,5 +1,7 @@
 use crate::engine::{EngineState, Stack};
 #[cfg(windows)]
+use crate::{FromValue, ShellError, Span, Value};
+#[cfg(windows)]
 use omnipath::sys_absolute;
 use std::path::{Path, PathBuf};
 
@@ -36,7 +38,6 @@ where
 #[cfg(windows)]
 pub mod windows {
     use super::*;
-    use crate::{FromValue, Value};
 
     pub trait EnvMaintainer {
         fn maintain(&mut self, key: String, value: Value);
@@ -61,15 +62,27 @@ pub mod windows {
     /// TBD: If value can't be converted to String or the value is not valid for
     /// windows path on a drive, should 'cd' or 'auto_cd' get warning message
     /// that PWD-per-drive can't process the path value?
-    pub fn set_pwd<T: EnvMaintainer>(maintainer: &mut T, value: Value) {
-        if let Ok(path_string) = String::from_value(value.clone()) {
-            if let Some(drive) = extract_drive_letter(&path_string) {
-                maintainer.maintain(env_var_for_drive(drive), value);
-            } else {
-                log::trace!("PWD-per-drive can't find drive of {}", path_string);
+    pub fn set_pwd<T: EnvMaintainer>(
+        maintainer: &mut T,
+        value: Value,
+    ) -> Result<(), crate::ShellError> {
+        match String::from_value(value.clone()) {
+            Ok(path_string) => {
+                if let Some(drive) = extract_drive_letter(&path_string) {
+                    maintainer.maintain(env_var_for_drive(drive), value.clone());
+                } else {
+                    // UNC Network share path (or any other format of path) must be mapped
+                    // to local drive, then CMD.exe can support current directory,
+                    // PWD-per-drive needs do nothing, and it's not an Err().
+                }
+                Ok(())
             }
-        } else if let Err(e) = value.into_string() {
-            log::trace!("PWD-per-drive can't keep this path value: {}", e);
+            Err(e) => Err(ShellError::InvalidValue {
+                valid: "$env.PWD should have String type and String::from_value() should be OK()."
+                    .to_string(),
+                actual: format!("type {}, String::from_value() got {}", value.get_type(), e),
+                span: Span::unknown(),
+            }),
         }
     }
 

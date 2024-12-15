@@ -49,11 +49,20 @@ impl Command for SubCommand {
         if matches!(input, PipelineData::Empty) {
             return Err(ShellError::PipelineEmpty { dst_span: head });
         }
-        
+
         let stack_clone = stack.clone();
         let engine_state_clone = engine_state.clone();
         input.map(
-            move |value| super::operate(&stack_clone, &engine_state_clone, &split, &args, value, head),
+            move |value| {
+                super::operate(
+                    &stack_clone,
+                    &engine_state_clone,
+                    &split,
+                    &args,
+                    value,
+                    head,
+                )
+            },
             engine_state.signals(),
         )
     }
@@ -159,7 +168,13 @@ impl Command for SubCommand {
     }
 }
 
-fn split(_stack: &Stack, _engine_state: &EngineState, path: &Path, span: Span, _: &Arguments) -> Value {
+fn split(
+    _stack: &Stack,
+    _engine_state: &EngineState,
+    path: &Path,
+    span: Span,
+    _: &Arguments,
+) -> Value {
     Value::list(
         path.components()
             .filter_map(|comp| {

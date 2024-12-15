@@ -186,7 +186,13 @@ On Windows, an extra 'prefix' column is added."#
     }
 }
 
-fn parse(_stack: &Stack, _engine_state: &EngineState, path: &Path, span: Span, args: &Arguments) -> Value {
+fn parse(
+    _stack: &Stack,
+    _engine_state: &EngineState,
+    path: &Path,
+    span: Span,
+    args: &Arguments,
+) -> Value {
     let mut record = Record::new();
 
     #[cfg(windows)]

@@ -63,11 +63,20 @@ Also note that if you don't have a permission to a directory of a path, false wi
         if matches!(input, PipelineData::Empty) {
             return Err(ShellError::PipelineEmpty { dst_span: head });
         }
-        
+
         let stack_clone = stack.clone();
         let engine_state_clone = engine_state.clone();
         input.map(
-            move |value| super::operate(&stack_clone, &engine_state_clone, &exists, &args, value, head),
+            move |value| {
+                super::operate(
+                    &stack_clone,
+                    &engine_state_clone,
+                    &exists,
+                    &args,
+                    value,
+                    head,
+                )
+            },
             engine_state.signals(),
         )
     }
@@ -88,7 +97,7 @@ Also note that if you don't have a permission to a directory of a path, false wi
         if matches!(input, PipelineData::Empty) {
             return Err(ShellError::PipelineEmpty { dst_span: head });
         }
-        
+
         let engine_state = working_set.permanent_state.clone();
         input.map(
             move |value| super::operate(&Stack::new(), &engine_state, &exists, &args, value, head),
@@ -135,7 +144,13 @@ Also note that if you don't have a permission to a directory of a path, false wi
     }
 }
 
-fn exists(stack: &Stack, engine_state: &EngineState, path: &Path, span: Span, args: &Arguments) -> Value {
+fn exists(
+    stack: &Stack,
+    engine_state: &EngineState,
+    path: &Path,
+    span: Span,
+    args: &Arguments,
+) -> Value {
     if path.as_os_str().is_empty() {
         return Value::bool(false, span);
     }

@@ -77,12 +77,14 @@ impl Command for SubCommand {
                 true,
             );
             Value::string(
-                expand_path_with(stack, working_set.permanent_state, path, dir, false).to_string_lossy(),
+                expand_path_with(stack, working_set.permanent_state, path, dir, false)
+                    .to_string_lossy(),
                 call.head,
             )
         } else {
             Value::string(
-                expand_path_with(stack, working_set.permanent_state, current_file, &cwd, true).to_string_lossy(),
+                expand_path_with(stack, working_set.permanent_state, current_file, &cwd, true)
+                    .to_string_lossy(),
                 call.head,
             )
         };

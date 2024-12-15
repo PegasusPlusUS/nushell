@@ -69,7 +69,16 @@ path."#
         let stack_clone = stack.clone();
         let engine_state_clone = engine_state.clone();
         input.map(
-            move |value| super::operate(&stack_clone, &engine_state_clone, &relative_to, &args, value, head),
+            move |value| {
+                super::operate(
+                    &stack_clone,
+                    &engine_state_clone,
+                    &relative_to,
+                    &args,
+                    value,
+                    head,
+                )
+            },
             engine_state.signals(),
         )
     }
@@ -92,7 +101,16 @@ path."#
         let signals = working_set.permanent_state.signals();
         let engine_state = working_set.permanent_state.clone();
         input.map(
-            move |value| super::operate(&Stack::new(), &engine_state, &relative_to, &args, value, head),
+            move |value| {
+                super::operate(
+                    &Stack::new(),
+                    &engine_state,
+                    &relative_to,
+                    &args,
+                    value,
+                    head,
+                )
+            },
             signals,
         )
     }
@@ -146,7 +164,13 @@ path."#
     }
 }
 
-fn relative_to(_stack: &Stack, _engine_state: &EngineState, path: &Path, span: Span, args: &Arguments) -> Value {
+fn relative_to(
+    _stack: &Stack,
+    _engine_state: &EngineState,
+    path: &Path,
+    span: Span,
+    args: &Arguments,
+) -> Value {
     let lhs = expand_to_real_path(path); // To DO: let expand_to_real_path use PWD-per-drive
     let rhs = expand_to_real_path(&args.path.item);
     match lhs.strip_prefix(&rhs) {

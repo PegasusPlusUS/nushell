@@ -22,7 +22,10 @@ pub use relative_to::SubCommand as PathRelativeTo;
 pub use self_::SubCommand as PathSelf;
 pub use split::SubCommand as PathSplit;
 
-use nu_protocol::{engine::{EngineState, Stack}, ShellError, Span, Value};
+use nu_protocol::{
+    engine::{EngineState, Stack},
+    ShellError, Span, Value,
+};
 use std::path::Path as StdPath;
 
 #[cfg(windows)]
@@ -32,7 +35,14 @@ const ALLOWED_COLUMNS: [&str; 3] = ["parent", "stem", "extension"];
 
 trait PathSubcommandArguments {}
 
-fn operate<F, A>(stack: &Stack, engine_state :&EngineState, cmd: &F, args: &A, v: Value, name: Span) -> Value
+fn operate<F, A>(
+    stack: &Stack,
+    engine_state: &EngineState,
+    cmd: &F,
+    args: &A,
+    v: Value,
+    name: Span,
+) -> Value
 where
     F: Fn(&Stack, &EngineState, &StdPath, Span, &A) -> Value + Send + Sync + 'static,
     A: PathSubcommandArguments + Send + Sync + 'static,

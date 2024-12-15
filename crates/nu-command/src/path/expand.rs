@@ -68,11 +68,20 @@ impl Command for SubCommand {
         if matches!(input, PipelineData::Empty) {
             return Err(ShellError::PipelineEmpty { dst_span: head });
         }
-        
+
         let stack_clone = stack.clone();
         let engine_state_clone = engine_state.clone();
         input.map(
-            move |value| super::operate(&stack_clone, &engine_state_clone, &expand, &args, value, head),
+            move |value| {
+                super::operate(
+                    &stack_clone,
+                    &engine_state_clone,
+                    &expand,
+                    &args,
+                    value,
+                    head,
+                )
+            },
             engine_state.signals(),
         )
     }
@@ -150,13 +159,20 @@ impl Command for SubCommand {
     }
 }
 
-fn expand(stack: &Stack, engine_state: &EngineState, path: &Path, span: Span, args: &Arguments) -> Value {
+fn expand(
+    stack: &Stack,
+    engine_state: &EngineState,
+    path: &Path,
+    span: Span,
+    args: &Arguments,
+) -> Value {
     if args.strict {
         match canonicalize_with(path, &args.cwd) {
             Ok(p) => {
                 if args.not_follow_symlink {
                     Value::string(
-                        expand_path_with(stack, engine_state, path, &args.cwd, true).to_string_lossy(),
+                        expand_path_with(stack, engine_state, path, &args.cwd, true)
+                            .to_string_lossy(),
                         span,
                     )
                 } else {

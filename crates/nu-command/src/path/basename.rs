@@ -59,11 +59,20 @@ impl Command for SubCommand {
         if matches!(input, PipelineData::Empty) {
             return Err(ShellError::PipelineEmpty { dst_span: head });
         }
-        
+
         let stack_clone = stack.clone();
         let engine_state_clone = engine_state.clone();
         input.map(
-            move |value| super::operate(&stack_clone, &engine_state_clone, &get_basename, &args, value, head),
+            move |value| {
+                super::operate(
+                    &stack_clone,
+                    &engine_state_clone,
+                    &get_basename,
+                    &args,
+                    value,
+                    head,
+                )
+            },
             engine_state.signals(),
         )
     }
@@ -83,10 +92,19 @@ impl Command for SubCommand {
         if matches!(input, PipelineData::Empty) {
             return Err(ShellError::PipelineEmpty { dst_span: head });
         }
-        
+
         let engine_state = working_set.permanent_state.clone();
         input.map(
-            move |value| super::operate(&Stack::new(), &engine_state, &get_basename, &args, value, head),
+            move |value| {
+                super::operate(
+                    &Stack::new(),
+                    &engine_state,
+                    &get_basename,
+                    &args,
+                    value,
+                    head,
+                )
+            },
             working_set.permanent().signals(),
         )
     }
@@ -140,7 +158,13 @@ impl Command for SubCommand {
     }
 }
 
-fn get_basename(_stack: &Stack, _engine_state: &EngineState, path: &Path, span: Span, args: &Arguments) -> Value {
+fn get_basename(
+    _stack: &Stack,
+    _engine_state: &EngineState,
+    path: &Path,
+    span: Span,
+    args: &Arguments,
+) -> Value {
     match &args.replace {
         Some(r) => Value::string(path.with_file_name(r.item.clone()).to_string_lossy(), span),
         None => Value::string(
