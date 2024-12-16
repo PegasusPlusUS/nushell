@@ -1,9 +1,10 @@
 use crate::engine::{EngineState, Stack};
-#[cfg(windows)]
-use crate::{FromValue, ShellError, Span, Value};
-#[cfg(windows)]
-use omnipath::sys_absolute;
 use std::path::{Path, PathBuf};
+#[cfg(windows)]
+use {
+    crate::{FromValue, ShellError, Span, Value},
+    omnipath::sys_absolute,
+};
 
 // For file system command usage
 /// Proxy/Wrapper for
@@ -62,25 +63,32 @@ pub mod windows {
     /// TBD: If value can't be converted to String or the value is not valid for
     /// windows path on a drive, should 'cd' or 'auto_cd' get warning message
     /// that PWD-per-drive can't process the path value?
-    pub fn set_pwd<T: EnvMaintainer>(
-        maintainer: &mut T,
-        value: Value,
-    ) -> Result<(), crate::ShellError> {
+    pub fn set_pwd<T: EnvMaintainer>(maintainer: &mut T, value: Value) -> Result<(), ShellError> {
         match String::from_value(value.clone()) {
             Ok(path_string) => {
                 if let Some(drive) = extract_drive_letter(&path_string) {
                     maintainer.maintain(env_var_for_drive(drive), value.clone());
+                    Ok(())
+                } else if path_string.is_empty() {
+                    Ok(())
                 } else {
-                    // UNC Network share path (or any other format of path) must be mapped
-                    // to local drive, then CMD.exe can support current directory,
-                    // PWD-per-drive needs do nothing, and it's not an Err().
+                    // Other path format, like UNC Network share path, or bash format
+                    // /c/Users/nushell will be supported later.
+                    Err(ShellError::InvalidValue {
+                        valid: format!("Can't detect drive letter from {}.", path_string),
+                        actual: path_string,
+                        span: Span::unknown(),
+                    })
                 }
-                Ok(())
             }
             Err(e) => Err(ShellError::InvalidValue {
                 valid: "$env.PWD should have String type and String::from_value() should be OK()."
-                    .to_string(),
-                actual: format!("type {}, String::from_value() got {}", value.get_type(), e),
+                    .into(),
+                actual: format!(
+                    "type {}, String::from_value() got \"{}\".",
+                    value.get_type(),
+                    e
+                ),
                 span: Span::unknown(),
             }),
         }
@@ -102,6 +110,13 @@ pub mod windows {
             }
         }
         None
+    }
+
+    /// Extend automatic env vars for all drive
+    pub fn extend_automatic_env_vars(vec: &mut Vec<String>) {
+        for drive in 'A'..='Z' {
+            vec.push(env_var_for_drive(drive).clone());
+        }
     }
 
     /// Implementation for maintainer and fs_client
@@ -185,13 +200,16 @@ pub mod windows {
     #[cfg(test)] // test only for windows
     mod tests {
         use super::*;
-        use crate::{IntoValue, Span};
 
         #[test]
         fn test_expand_path_with() {
             let mut stack = Stack::new();
             let path_str = r"c:\users\nushell";
-            set_pwd(&mut stack, path_str.into_value(Span::unknown()));
+            let result = set_pwd(
+                &mut stack,
+                crate::IntoValue::into_value(path_str, Span::unknown()),
+            );
+            assert_eq!(result, Ok(()));
             let engine_state = EngineState::new();
 
             let rel_path = Path::new("c:.config");
@@ -204,12 +222,36 @@ pub mod windows {
             );
         }
 
+        // Helper shared by tests
+        fn verify_result_is_shell_error_invalid_value(result: Result<(), ShellError>) {
+            match result {
+                Ok(_) => panic!("Should not Ok"),
+                Err(ShellError::InvalidValue {
+                    valid,
+                    actual,
+                    span,
+                }) => {
+                    assert_eq!(
+                        valid,
+                        "$env.PWD should have String type and String::from_value() should be OK()."
+                    );
+                    assert_eq!(
+                        actual,
+                        "type int, String::from_value() got \"Can't convert to string.\"."
+                    );
+                    assert_eq!(span, Span::unknown());
+                }
+                Err(e) => panic!("Should not be other error {}", e),
+            }
+        }
+
         #[test]
         fn test_set_pwd() {
             let mut stack = Stack::new();
             let path_str = r"c:\users\nushell";
-            set_pwd(&mut stack, path_str.into_value(Span::unknown()));
+            let result = set_pwd(&mut stack, path_str.into_value(Span::unknown()));
             let engine_state = EngineState::new();
+            assert!(result.is_ok());
             assert_eq!(
                 stack
                     .get_env_var(&engine_state, &env_var_for_drive('c'))
@@ -219,13 +261,22 @@ pub mod windows {
                     .unwrap(),
                 path_str.to_string()
             );
+
+            // Non string value will get shell error
+            verify_result_is_shell_error_invalid_value(set_pwd(
+                &mut stack,
+                2.into_value(Span::unknown()),
+            ));
         }
 
         #[test]
         fn test_expand_pwd() {
             let mut stack = Stack::new();
             let path_str = r"c:\users\nushell";
-            set_pwd(&mut stack, path_str.into_value(Span::unknown()));
+            assert_eq!(
+                Ok(()),
+                set_pwd(&mut stack, path_str.into_value(Span::unknown()))
+            );
             let engine_state = EngineState::new();
 
             let rel_path = Path::new("c:.config");
@@ -253,10 +304,23 @@ pub mod windows {
         }
 
         #[test]
+        fn test_extend_automatic_env_vars() {
+            let mut env_vars = vec![];
+            extend_automatic_env_vars(&mut env_vars);
+            assert_eq!(env_vars.len(), 26);
+            for drive in 'A'..='Z' {
+                assert!(env_vars.contains(&env_var_for_drive(drive)));
+            }
+        }
+
+        #[test]
         fn test_get_pwd_on_drive() {
             let mut stack = Stack::new();
             let path_str = r"c:\users\nushell";
-            set_pwd(&mut stack, path_str.into_value(Span::unknown()));
+            assert_eq!(
+                Ok(()),
+                set_pwd(&mut stack, path_str.into_value(Span::unknown()))
+            );
             let engine_state = EngineState::new();
             let result = format!(r"{path_str}\");
             assert_eq!(result, get_pwd_on_drive(&stack, &engine_state, 'c'));

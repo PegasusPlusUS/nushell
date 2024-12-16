@@ -5,8 +5,7 @@ use crate::{
         ArgumentStack, EngineState, ErrorHandlerStack, Redirection, StackCallArgGuard,
         StackCollectValueGuard, StackIoGuard, StackOutDest, DEFAULT_OVERLAY_NAME,
     },
-    report_shell_error, Config, IntoValue, OutDest, ShellError, Span, Value, VarId,
-    ENV_VARIABLE_ID, NU_VARIABLE_ID,
+    Config, IntoValue, OutDest, ShellError, Span, Value, VarId, ENV_VARIABLE_ID, NU_VARIABLE_ID,
 };
 use nu_utils::IgnoreCaseExt;
 use std::{
@@ -56,7 +55,6 @@ pub struct Stack {
     /// Locally updated config. Use [`.get_config()`](Self::get_config) to access correctly.
     pub config: Option<Arc<Config>>,
     pub(crate) out_dest: StackOutDest,
-    set_pwd_shell_err: Option<ShellError>,
 }
 
 impl Default for Stack {
@@ -86,7 +84,6 @@ impl Stack {
             parent_deletions: vec![],
             config: None,
             out_dest: StackOutDest::new(),
-            set_pwd_shell_err: None,
         }
     }
 
@@ -108,7 +105,6 @@ impl Stack {
             config: parent.config.clone(),
             out_dest: parent.out_dest.clone(),
             parent_stack: Some(parent),
-            set_pwd_shell_err: None,
         }
     }
 
@@ -256,26 +252,17 @@ impl Stack {
         }
     }
 
-    pub fn add_pwd(&mut self, engine_state: &EngineState, value: Value) {
-        self.add_env_var("PWD".into(), value);
-
-        if let Some(e) = self.has_set_pwd_shell_err() {
-            report_shell_error(engine_state, &e);
-        }
-    }
-
-    fn has_set_pwd_shell_err(&mut self) -> Option<ShellError> {
-        let result = self.set_pwd_shell_err.clone();
-        self.set_pwd_shell_err = None;
-        result
-    }
-
     pub fn add_env_var(&mut self, var: String, value: Value) {
+        let _ = self.add_env_var_with_result(var, value);
+    }
+    pub fn add_env_var_with_result(&mut self, var: String, value: Value) -> Result<(), ShellError> {
+        #[cfg(not(windows))]
+        let result = Ok(());
+        #[cfg(windows)]
+        let mut result = Ok(());
         #[cfg(windows)]
         if var == "PWD" {
-            if let Err(e) = set_pwd(self, value.clone()) {
-                self.set_pwd_shell_err = Some(e);
-            }
+            result = set_pwd(self, value.clone())
         }
 
         if let Some(last_overlay) = self.active_overlays.last() {
@@ -302,6 +289,7 @@ impl Stack {
             // TODO: Remove panic
             panic!("internal error: no active overlay");
         }
+        result
     }
 
     pub fn set_last_exit_code(&mut self, code: i32, span: Span) {
@@ -346,7 +334,6 @@ impl Stack {
             parent_deletions: vec![],
             config: self.config.clone(),
             out_dest: self.out_dest.clone(),
-            set_pwd_shell_err: None,
         }
     }
 
@@ -380,7 +367,6 @@ impl Stack {
             parent_deletions: vec![],
             config: self.config.clone(),
             out_dest: self.out_dest.clone(),
-            set_pwd_shell_err: None,
         }
     }
 
@@ -789,8 +775,7 @@ impl Stack {
             // Strip trailing slashes, if any.
             let path = nu_path::strip_trailing_slash(path);
             let value = Value::string(path.to_string_lossy(), Span::unknown());
-            self.add_env_var("PWD".into(), value);
-            Ok(())
+            self.add_env_var_with_result("PWD".into(), value)
         }
     }
 }
