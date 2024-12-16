@@ -333,13 +333,21 @@ fn filesystem_from_non_root_change_to_another_drive_non_root_then_using_relative
         let _actual = nu!(
             cwd: dirs.test(),
             r#"
+                echo "Hello, World!"
+                X:
+                cd -
+                subst Z: /d
+                echo $env.PWD
                 subst Z: test_folder
                 Z:
                 echo "some text" | save test_file.txt
                 cd ~
                 subst Z: /d
+                ls test/test_folder/test_file.txt
             "#
         );
+        println!("std:{}", _actual.out);
+        println!("err:{}", _actual.err);
         assert!(dirs
             .test()
             .join("test_folder")
