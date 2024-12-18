@@ -1,5 +1,5 @@
 use crate::engine::{EngineState, Stack};
-#[cfg(test)]
+#[cfg(all(test, windows))]
 use crate::IntoValue;
 use std::path::{Path, PathBuf};
 #[cfg(windows)]
@@ -240,7 +240,7 @@ pub mod windows {
             let engine_state = EngineState::new();
 
             let rel_path = Path::new("c:.config");
-            let result = format!(r"{path_str}\.config");
+            let result = format!(r"{}\.config", path_str);
             assert_eq!(
                 Some(result.as_str()),
                 expand_path_with(&stack, &engine_state, rel_path, Path::new(path_str), false)
@@ -307,7 +307,7 @@ pub mod windows {
             let engine_state = EngineState::new();
 
             let rel_path = Path::new("c:.config");
-            let result = format!(r"{path_str}\.config");
+            let result = format!(r"{}\.config", path_str);
             assert_eq!(
                 Some(result.as_str()),
                 expand_pwd(&stack, &engine_state, rel_path)
@@ -320,7 +320,10 @@ pub mod windows {
         #[test]
         fn test_env_var_for_drive() {
             for drive_letter in 'A'..='Z' {
-                assert_eq!(env_var_for_drive(drive_letter), format!("={drive_letter}:"));
+                assert_eq!(
+                    env_var_for_drive(drive_letter),
+                    format!("={}:", drive_letter)
+                );
             }
             for drive_letter in 'a'..='z' {
                 assert_eq!(
@@ -382,7 +385,7 @@ pub mod windows {
                 set_pwd(&mut stack, path_str.into_value(Span::unknown()))
             );
             let engine_state = EngineState::new();
-            let result = format!(r"{path_str}\");
+            let result = format!(r"{}\", path_str);
             assert_eq!(result, get_pwd_on_drive(&stack, &engine_state, 'c'));
         }
 
