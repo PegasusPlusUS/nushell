@@ -69,6 +69,18 @@ impl Command for External {
             _ => Path::new(&*name_str).to_owned(),
         };
 
+        if call.req::<Value>(engine_state, stack, 1).is_err() && expanded_name.is_dir() {
+            eprintln!("auto cd to {}", expanded_name.to_string_lossy());
+            match stack.set_cwd(expanded_name) {
+                Ok(_) => {
+                    return Ok(PipelineData::Empty);
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+            }
+        }
+
         // On Windows, the user could have run the cmd.exe built-in "assoc" command
         // Example: "assoc .nu=nuscript" and then run the cmd.exe built-in "ftype" command
         // Example: "ftype nuscript=C:\path\to\nu.exe '%1' %*" and then added the nushell

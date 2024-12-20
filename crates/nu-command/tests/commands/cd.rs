@@ -1,4 +1,4 @@
-use nu_path::Path;
+use nu_path::{assert_path_eq, Path};
 use nu_test_support::fs::Stub::EmptyFile;
 use nu_test_support::nu;
 use nu_test_support::playground::Playground;
@@ -326,7 +326,7 @@ fn pwd_recovery() {
 
 #[cfg(windows)]
 #[test]
-fn filesystem_from_non_root_change_to_another_drive_non_root_then_using_relative_path_go_back() {
+fn filesystem_pwd_per_drive_cd_auto_cd_from_to_non_root() {
     Playground::setup("cd_test_22", |dirs, sandbox| {
         sandbox.mkdir("test_folder");
 
@@ -336,26 +336,76 @@ fn filesystem_from_non_root_change_to_another_drive_non_root_then_using_relative
                 touch test_folder/test_file.txt
             "#
         );
+        assert!(_actual.out.is_empty());
+        assert!(_actual.err.is_empty());
         assert!(dirs.test.exists());
         assert!(dirs.test.join("test_folder").exists());
         assert!(dirs.test.join("test_folder").join("test_file.txt").exists());
+
+        sandbox.mkdir("test_folder");
         let _actual = nu!(
             cwd: dirs.test(),
             r#"
                 subst X: /D | touch out
                 subst X: test_folder
                 cd x:
+                rm test_file.txt | touch err
+                echo $env.PWD | save result.out.txt
+                cd -
+                cd X:\
+                cd -
+                subst X: /D | touch out
+                open test_folder\result.out.txt
+            "#
+        );
+        assert_path_eq!(_actual.out, r"X:\");
+        assert!(_actual.err.is_empty());
+        assert!(dirs.test.join("test_folder").exists());
+        assert!(!dirs.test.join("test_folder").join("test_file.txt").exists());
+
+        sandbox.mkdir("test_folder");
+        let _actual = nu!(
+            cwd: dirs.test(),
+            r#"
+                subst X: /D | touch out
+                subst X: test_folder
+                mkdir X:test_folder_on_x
+                cd x:test_folder_on_x\
+                echo $env.PWD | save result.out.txt
+                cd -
+                cd X:\
+                cd -
+                subst X: /D | touch out
+                open test_folder\test_folder_on_x\result.out.txt
+            "#
+        );
+        assert_path_eq!(_actual.out, r"X:\test_folder_on_x");
+        assert!(_actual.err.is_empty());
+
+        sandbox.mkdir("test_folder");
+        // auto_cd (Note auto cd does not support '-', return to old pwd must use full cd)
+        let _actual = nu!(
+            cwd: dirs.test(),
+            r#"
+                subst X: /D | touch out
+                subst X: test_folder
+                mkdir X:test_folder_on_x
+                x:test_folder_on_x\
                 touch test_file_on_x.txt
-                echo $env.PWD
+                cd -
+                x:\
                 cd -
                 subst X: /D | touch out
                 echo $env.PWD
             "#
         );
-        assert!(dirs.test.exists());
-        assert!(dirs.test.join("test_folder").exists());
         assert!(_actual.out.ends_with(r"\cd_test_22"));
         assert!(_actual.err.is_empty());
-        assert!(dirs.test.join("test_folder").join("test_file_on_x.txt").exists());
+        assert!(dirs
+            .test
+            .join("test_folder")
+            .join("test_folder_on_x")
+            .join("test_file_on_x.txt")
+            .exists());
     })
 }
