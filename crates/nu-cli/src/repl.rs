@@ -1476,7 +1476,7 @@ mod test_auto_cd {
     #[track_caller]
     fn check(before: impl AsRef<AbsolutePath>, input: &str, after: impl AsRef<AbsolutePath>) {
         // Setup EngineState and Stack.
-        let mut engine_state = EngineState::new();
+        let engine_state = EngineState::new();
         let mut stack = Stack::new();
         stack.set_cwd(before.as_ref()).unwrap();
 
@@ -1487,7 +1487,7 @@ mod test_auto_cd {
         };
 
         // Perform the auto-cd operation.
-        do_auto_cd(target, cwd, &mut stack, &mut engine_state, span);
+        do_auto_cd(target, cwd, &mut stack, &engine_state, span);
         let updated_cwd = engine_state.cwd(Some(&stack)).unwrap();
 
         // Check that `updated_cwd` and `after` point to the same place. They
