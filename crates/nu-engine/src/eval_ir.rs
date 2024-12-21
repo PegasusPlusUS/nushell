@@ -872,7 +872,6 @@ fn literal_value(
             } else {
                 let cwd = ctx.engine_state.cwd(Some(ctx.stack))?;
                 let path = expand_path_with(ctx.stack, ctx.engine_state, path, cwd, true);
-
                 Value::string(path.to_string_lossy(), span)
             }
         }
@@ -892,7 +891,6 @@ fn literal_value(
                     .map(AbsolutePathBuf::into_std_path_buf)
                     .unwrap_or_default();
                 let path = expand_path_with(ctx.stack, ctx.engine_state, path, cwd, true);
-
                 Value::string(path.to_string_lossy(), span)
             }
         }
